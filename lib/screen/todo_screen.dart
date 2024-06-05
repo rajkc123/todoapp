@@ -1,208 +1,178 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-// final remianingTodoProvider = StateProvider<int>((ref) {
-//   final todos = ref.watch(todoControllerProvider).todos;
-//   var remainingTodos = todos.where((element) => element.isCompleted).toList();
-//   return remainingTodos.length;
-// });
-
-// final allTodoProvider = StateProvider<TodoState>((ref) {
-//   final todos = ref.watch(todoControllerProvider).todos;
-//   return TodoState.initial().copyWith(todos: todos);
-// });
-
-// final pinnedTodoProvider = StateProvider<TodoState>((ref) {
-//   final todos = ref.watch(todoControllerProvider).todos;
-//   var pinnedTodos = todos.where((element) => element.isPinned).toList();
-//   return TodoState.initial().copyWith(todos: pinnedTodos);
-// });
-
-// final activeTodoProvider = StateProvider<TodoState>((ref) {
-//   final todos = ref.watch(todoControllerProvider).todos;
-//   var activeTodos = todos.where((element) => !element.isCompleted).toList();
-//   return TodoState.initial().copyWith(todos: activeTodos);
-// });
-
-// final completedTodoProvider = StateProvider<TodoState>((ref) {
-//   final todos = ref.watch(todoControllerProvider).todos;
-//   var completedTodos = todos.where((element) => element.isCompleted).toList();
-//   return TodoState.initial().copyWith(todos: completedTodos);
-// });
+import '../controller/todo_controller.dart';
+import '../model/todo_model.dart';
 
 class TodoScreen extends ConsumerStatefulWidget {
   const TodoScreen({super.key});
 
   @override
-  ConsumerState<ConsumerStatefulWidget> createState() => _TodoScreenState();
+  ConsumerState<TodoScreen> createState() => _TodoScreenState();
 }
 
-class _TodoScreenState extends ConsumerState<TodoScreen> {
+class _TodoScreenState extends ConsumerState<TodoScreen> with TickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        mainAxisSize: MainAxisSize.max,
-        children: [
-          const SizedBox(height: 40),
-          const HeaderWidget(),
-          const SizedBox(height: 40),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    const TopRow(),
-                    const Header(),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 10,
-                      ),
-                      child: TextFormField(
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          labelText: 'What do you want to do?',
-                          border: OutlineInputBorder(),
-                        ),
+    final todos = ref.watch(filteredTodosProvider);
+    final isLoading = ref.watch(todoControllerProvider).isEmpty;
+
+    if (isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    } else {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Todo App'),
+        ),
+        body: SizedBox.expand(
+          child: Column(
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              const SizedBox(height: 40),
+              const HeaderWidget(),
+              const SizedBox(height: 40),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
                       ),
                     ),
-                  ],
+                    child: Column(
+                      children: [
+                        const TopRow(),
+                        const Header(),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: TabBar(
+                            controller: _tabController,
+                            tabs: const [
+                              Tab(text: 'All'),
+                              Tab(text: 'Active'),
+                              Tab(text: 'Favourite'),
+                              Tab(text: 'Done'),
+                            ],
+                            onTap: (index) {
+                              ref.read(todoFilterProvider.notifier).state = TodoFilter.values[index];
+                            },
+                          ),
+                        ),
+                        Expanded(
+                          child: TabBarView(
+                            controller: _tabController,
+                            children: List.generate(
+                              4,
+                              (index) => TodoList(todos: todos),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-    );
+        ),
+      );
+    }
   }
 }
 
-//header widget
+class TodoList extends ConsumerWidget {
+  final List<Todo> todos;
 
-class HeaderWidget extends StatelessWidget {
-  const HeaderWidget({
-    super.key,
-  });
+  const TodoList({super.key, required this.todos});
 
   @override
-  Widget build(BuildContext context) {
-    return RichText(
-      text: const TextSpan(
-        text: 'Manage your \n',
-        style: TextStyle(fontSize: 30, color: Colors.black),
-        children: [
-          TextSpan(
-            text: 'Todos',
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.bold,
-            ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListView.builder(
+      itemCount: todos.length,
+      itemBuilder: (context, index) {
+        final todo = todos[index];
+        return ListTile(
+          leading: Radio(
+            value: todo.isCompleted,
+            groupValue: true,
+            onChanged: (value) {
+              ref.read(todoControllerProvider.notifier).updateTodoStatus(todo, !todo.isCompleted);
+            },
           ),
-          TextSpan(
-            text: ' in your elegant \n',
-            style: TextStyle(
-              fontSize: 30,
-            ),
+          title: Text(todo.title),
+          trailing: IconButton(
+            onPressed: () {
+              ref.read(todoControllerProvider.notifier).updatePinned(todo);
+            },
+            icon: Icon(Icons.star, color: todo.isPinned ? Colors.yellow : Colors.white),
           ),
-          TextSpan(
-            text: 'Todopad',
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
 
-// class CommonTodo extends ConsumerWidget {
-//   const CommonTodo(this.todoProvider, {super.key});
-
-//   final StateProvider todoProvider;
-
-//   @override
-//   Widget build(BuildContext context, WidgetRef ref) {
-//     final todos = ref.watch(todoProvider);
-//     return ListView.separated(
-//       separatorBuilder: (context, index) => const SizedBox(height: 10),
-//       itemCount: todos.todos.length,
-//       itemBuilder: (context, index) {
-//         return Container(
-//           decoration: BoxDecoration(
-//             color: Colors.grey,
-//             borderRadius: BorderRadius.circular(8),
-//           ),
-//           height: 70,
-//           child: InkWell(
-//             onTap: () {
-//               ref
-//                   .read(todoControllerProvider.notifier)
-//                   .updateTodo(todos.todos[index]);
-//             },
-//             child: ListTile(
-//               leading: Radio(
-//                 value: todos.todos[index].isCompleted,
-//                 groupValue: true,
-//                 onChanged: (value) {},
-//               ),
-//               title: Text(todos.todos[index].title),
-//               trailing: IconButton(
-//                 onPressed: () {
-//                   ref
-//                       .read(todoControllerProvider.notifier)
-//                       .updatePinned(todos.todos[index]);
-//                 },
-//                 icon: Icon(Icons.star,
-//                     color: todos.todos[index].isPinned
-//                         ? Colors.yellow
-//                         : Colors.white),
-//               ),
-//             ),
-//           ),
-//         );
-//       },
-//     );
-//   }
-// }
-
-class Header extends StatelessWidget {
-  const Header({
-    super.key,
-  });
+class HeaderWidget extends StatelessWidget {
+  const HeaderWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.center,
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 10,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: RichText(
           text: const TextSpan(
             text: 'My',
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 30,
-            ),
+            style: TextStyle(color: Colors.black, fontSize: 30),
             children: [
               TextSpan(
                 text: ' Todopad',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class Header extends StatelessWidget {
+  const Header({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.center,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: RichText(
+          text: const TextSpan(
+            text: 'My',
+            style: TextStyle(color: Colors.black, fontSize: 30),
+            children: [
+              TextSpan(
+                text: ' Todopad',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -213,9 +183,7 @@ class Header extends StatelessWidget {
 }
 
 class TopRow extends StatelessWidget {
-  const TopRow({
-    super.key,
-  });
+  const TopRow({super.key});
 
   @override
   Widget build(BuildContext context) {

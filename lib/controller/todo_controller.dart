@@ -1,19 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class Todo {
-  final String title;
-  final bool isCompleted;
-  final bool isPinned;
-
-  Todo({
-    required this.title,
-    this.isCompleted = false,
-    this.isPinned = false,
-  });
-}
+import '../model/todo_model.dart';
 
 class TodoNotifier extends StateNotifier<List<Todo>> {
-  TodoNotifier() : super([]);
+  TodoNotifier()
+      : super([
+          Todo(title: 'Sports'),
+          Todo(title: 'Coding', isCompleted: true),
+          Todo(title: 'Travel', isPinned: true),
+        ]);
 
   void addTodo(Todo todo) {
     state = [...state, todo];
@@ -22,28 +17,14 @@ class TodoNotifier extends StateNotifier<List<Todo>> {
   void updateTodoStatus(Todo todo, bool isCompleted) {
     state = [
       for (final t in state)
-        if (t == todo)
-          Todo(
-            title: t.title,
-            isCompleted: isCompleted,
-            isPinned: t.isPinned,
-          )
-        else
-          t,
+        if (t == todo) t.copyWith(isCompleted: isCompleted) else t,
     ];
   }
 
   void updatePinned(Todo todo) {
     state = [
       for (final t in state)
-        if (t == todo)
-          Todo(
-            title: t.title,
-            isCompleted: t.isCompleted,
-            isPinned: !t.isPinned,
-          )
-        else
-          t,
+        if (t == todo) t.copyWith(isPinned: !t.isPinned) else t,
     ];
   }
 }
