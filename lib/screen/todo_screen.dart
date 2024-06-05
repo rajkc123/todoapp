@@ -10,7 +10,8 @@ class TodoScreen extends ConsumerStatefulWidget {
   ConsumerState<TodoScreen> createState() => _TodoScreenState();
 }
 
-class _TodoScreenState extends ConsumerState<TodoScreen> with TickerProviderStateMixin {
+class _TodoScreenState extends ConsumerState<TodoScreen>
+    with TickerProviderStateMixin {
   late final TabController _tabController;
 
   @override
@@ -35,6 +36,7 @@ class _TodoScreenState extends ConsumerState<TodoScreen> with TickerProviderStat
         child: CircularProgressIndicator(),
       );
     } else {
+      final completedCount = todos.where((todo) => todo.isCompleted).length;
       return Scaffold(
         appBar: AppBar(
           title: const Text('Todo App'),
@@ -43,9 +45,34 @@ class _TodoScreenState extends ConsumerState<TodoScreen> with TickerProviderStat
           child: Column(
             mainAxisSize: MainAxisSize.max,
             children: [
-              const SizedBox(height: 40),
-              const HeaderWidget(),
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  'Manage your\nTodos in your elegant\nTodopad',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: SearchBar(),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  '$completedCount of ${todos.length} tasks completed',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -59,8 +86,7 @@ class _TodoScreenState extends ConsumerState<TodoScreen> with TickerProviderStat
                     ),
                     child: Column(
                       children: [
-                        const TopRow(),
-                        const Header(),
+                        const HeaderWidget(),
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           child: TabBar(
@@ -72,7 +98,8 @@ class _TodoScreenState extends ConsumerState<TodoScreen> with TickerProviderStat
                               Tab(text: 'Done'),
                             ],
                             onTap: (index) {
-                              ref.read(todoFilterProvider.notifier).state = TodoFilter.values[index];
+                              ref.read(todoFilterProvider.notifier).state =
+                                  TodoFilter.values[index];
                             },
                           ),
                         ),
@@ -109,23 +136,50 @@ class TodoList extends ConsumerWidget {
       itemCount: todos.length,
       itemBuilder: (context, index) {
         final todo = todos[index];
-        return ListTile(
-          leading: Radio(
-            value: todo.isCompleted,
-            groupValue: true,
-            onChanged: (value) {
-              ref.read(todoControllerProvider.notifier).updateTodoStatus(todo, !todo.isCompleted);
-            },
+        return Container(
+          margin: const EdgeInsets.symmetric(vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.grey[350],
+            borderRadius: BorderRadius.circular(10),
           ),
-          title: Text(todo.title),
-          trailing: IconButton(
-            onPressed: () {
-              ref.read(todoControllerProvider.notifier).updatePinned(todo);
-            },
-            icon: Icon(Icons.star, color: todo.isPinned ? Colors.yellow : Colors.white),
+          child: ListTile(
+            leading: Radio(
+              value: todo.isCompleted,
+              groupValue: true,
+              onChanged: (value) {
+                ref
+                    .read(todoControllerProvider.notifier)
+                    .updateTodoStatus(todo, !todo.isCompleted);
+              },
+            ),
+            title: Text(todo.title),
+            trailing: IconButton(
+              onPressed: () {
+                ref.read(todoControllerProvider.notifier).updatePinned(todo);
+              },
+              icon: Icon(Icons.star,
+                  color: todo.isPinned ? Colors.yellow : Colors.white),
+            ),
           ),
         );
       },
+    );
+  }
+}
+
+class SearchBar extends StatelessWidget {
+  const SearchBar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      decoration: InputDecoration(
+        hintText: 'What do you want to do?',
+        prefixIcon: const Icon(Icons.search),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
     );
   }
 }
